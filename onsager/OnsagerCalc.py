@@ -1522,5 +1522,110 @@ class VacancyMediated(object):
         return L0vv, D0ss + L1ss, D0sv + L1sv, D0vv + D2vv + L1vv
 
 
+class VacancyMediatedMeta(VacancyMediated):
+    """Trying out metastable preening"""
+
+    def __init__(self, crys, chem, sitelist, jumpnetwork, Nthermo=0, NGFmax=4, meta_tags=[], jumpnetwork2=[],
+                 deleted_states=[]):
+        """
+        will fill it later
+        """
+        if not meta_tags:
+            VacancyMediated.__init__(self,crys, chem, sitelist, jumpnetwork, Nthermo,NGFmax)
+        else:
+            if all(x is None for x in (crys, chem, sitelist, jumpnetwork)): return  # blank object
+            self.crys = crys
+            self.chem = chem
+            self.sitelist = copy.deepcopy(sitelist)
+            self.jumpnetwork = copy.deepcopy(jumpnetwork)
+            self.N = sum(len(w) for w in sitelist)
+            self.invmap = np.zeros(self.N, dtype=int)
+            for ind,w in enumerate(sitelist):
+                for i in w:
+                    self.invmap[i] = ind
+            self.om0_jn = copy.deepcopy(jumpnetwork)
+            self.GFcalc = self.GFcalculator(NGFmax)
+            # do some initial setup:
+            self.thermo = stars.StarSetMeta(self.jumpnetwork, self.crys, self.chem, Nthermo, meta_tags=meta_tags,
+                                            jumpnetwork2=jumpnetwork2)
+            self.kinetic = stars.StarSetMeta(self.jumpnetwork, self.crys, self.chem, Nthermo, meta_tags=meta_tags,
+                                            jumpnetwork2=jumpnetwork2)
+            self.NNstar = stars.StarSetMeta(self.jumpnetwork, self.crys, self.chem, 1, meta_tags=meta_tags,
+                                            jumpnetwork2=jumpnetwork2)
+            self.vkinetic = stars.VectorStarSetMeta()
+            # separating out the thermo and kinetic part from here on
+            # generate and prune thermo data
+            self.generatethermometa(Nthermo, deleted_states=deleted_states)
+            self.generatematricesmeta()
+            self.tags, self.tagdict = self.generatetags()  # dict: vacancy, solute, solute-vacancy; omega0, omega1, omega2
+
+    def generatethermometa(self, Nthermo, deleted_states = []):
+        """
+        will fill it later
+        """
+        if Nthermo == getattr(self, 'Nthermo', 0): return
+        self.Nthermo = Nthermo
+        self.thermo.generate(Nthermo, originstates=False)
+        self.kinetic.generate(Nthermo+1, originstates=True)
+        # print(type(self.kinetic))
+        # print(self.kinetic.jumplist2)
+        self.vkinetic.generate(self.kinetic)
+        # TODO: check the GF calculator against the range in GFstarset to make sure its adequate
+        self.GFexpansion, self.GFstarset = self.vkinetic.GFexpansion()
+
+        # some indexing helpers:
+        # thermo2kin maps star index in thermo to kinetic (should just be range(n), but we use this for safety)
+        # kin2vacancy maps star index in kinetic to non-solute configuration from sitelist
+        # outerkin is the list of stars that are in kinetic, but not in thermo
+        # vstar2kin maps each vector star back to the corresponding star index
+        # kin2vstar provides a list of vector stars indices corresponding to the same star index
+        self.thermo2kin = [self.kinetic.starindex(self.thermo.states[s[0]]) for s in self.thermo.stars]
+        self.kin2vacancy = [self.invmap[self.kinetic.states[s[0]].j] for s in self.kinetic.stars]
+        self.outerkin = [s for s in range(self.kinetic.Nstars)
+                         if self.thermo.stateindex(self.kinetic.states[self.kinetic.stars[s][0]]) is None]
+        self.vstar2kin = [self.kinetic.index[Rs[0]] for Rs in self.vkinetic.vecpos]
+        self.kin2vstar = [[j for j in range(self.vkinetic.Nvstars) if self.vstar2kin[j] == i]
+                          for i in range(self.kinetic.Nstars)]
+        # jumpnetwork, jumptype (omega0), star-pair for jump
+        self.om1_jn, self.om1_jt, self.om1_SP, self.rep_network,self.zero_states = \
+            self.kinetic.jumpnetwork_omega1(deleted_states=deleted_states)
+        self.om2_jn, self.om2_jt, self.om2_SP, self.dx_old = self.kinetic.jumpnetwork_omega2()
+        # Prune the om1 list: remove entries that have jumps between stars in outerkin:
+        # work in reverse order so that popping is safe (and most of the offending entries are at the end
+        for i, SP in zip(reversed(range(len(self.om1_SP))), reversed(self.om1_SP)):
+            if SP[0] in self.outerkin and SP[1] in self.outerkin:
+                self.om1_jn.pop(i), self.om1_jt.pop(i), self.om1_SP.pop(i)
+        # empty dictionaries to store GF values
+        self.clearcache()
+
+    def generatematricesmeta(self):
+        """
+        Generates all the matrices and "helper" pieces, based on our jump networks.
+        This has been separated out in case the user wants to, e.g., prune / modify the networks
+        after they've been created with generate(), then generatematrices() can be rerun.
+        """
+        self.Dom1_om0, self.Dom1 = self.vkinetic.bareexpansions(self.om1_jn, self.om1_jt)
+        self.Dom2_om0, self.Dom2 = self.vkinetic.bareexpansions(self.om2_jn, self.om2_jt)
+        self.om1_om0, self.om1_om0escape, self.om1expansion, self.om1escape = \
+            self.vkinetic.rateexpansions(self.om1_jn, self.om1_jt, replaced_network = self.rep_network,
+                                         zeroed_states = self.zero_states)
+        self.om2_om0, self.om2_om0escape, self.om2expansion, self.om2escape = \
+            self.vkinetic.rateexpansions(self.om2_jn, self.om2_jt, omega2=True, dx_old = self.dx_old)
+        self.om1_b0, self.om1bias = self.vkinetic.biasexpansions(self.om1_jn, self.om1_jt,
+                                                                 replaced_network = self.rep_network)
+        self.om2_b0, self.om2bias = self.vkinetic.biasexpansions(self.om2_jn, self.om2_jt, omega2=True,
+                                                                 dx_old = self.dx_old)
+        self.OSindices, self.OSfolddown, self.OS_VB = self.vkinetic.originstateVectorBasisfolddown('solute')
+        self.OSVfolddown = self.vkinetic.originstateVectorBasisfolddown('vacancy')[1]  # only need the folddown
+
+        # more indexing helpers:
+        # kineticsvWyckoff: Wyckoff position of solute and vacancy for kinetic stars
+        # omega0vacancyWyckoff: Wyckoff positions of initial and final position in omega0 jumps
+        self.kineticsvWyckoff = [(self.invmap[PS.i], self.invmap[PS.j]) for PS in
+                                 [self.kinetic.states[si[0]] for si in self.kinetic.stars]]
+        self.omega0vacancyWyckoff = [(self.invmap[jumplist[0][0][0]], self.invmap[jumplist[0][0][1]])
+                                     for jumplist in self.om0_jn]
+
+
 crystal.yaml.add_representer(vacancyThermoKinetics, vacancyThermoKinetics.vacancyThermoKinetics_representer)
 crystal.yaml.add_constructor(VACANCYTHERMOKINETICS_YAMLTAG, vacancyThermoKinetics.vacancyThermoKinetics_constructor)
