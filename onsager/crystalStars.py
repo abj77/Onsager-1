@@ -744,7 +744,7 @@ class StarSetMeta(StarSet):
     """
     Testing meta states with star set
     """
-    def __init__(self, jumpnetwork, crys, chem, Nshells=0, originstates=False, lattice=False, meta_tags=[], jumpnetwork2=[]):
+    def __init__(self, jumpnetwork, crys, chem, Nshells=0, originstates=False, lattice=False, meta_sites=()):
         """
         Initiates a star set generator for a given jumpnetwork, crystal, and specified
         chemical index.
@@ -756,6 +756,7 @@ class StarSetMeta(StarSet):
         :param chem: chemical index of atom to consider jumps
         :param Nshells: number of shells to generate
         :param lattice: which form does the jumpnetwork take?
+        :param meta_sites: tuple of metastable site indices
 
         crys: crystal structure
         chem: chemical index of atom that's jumping
@@ -771,15 +772,10 @@ class StarSetMeta(StarSet):
         # empty StarSet
         if all(x is None for x in (jumpnetwork, crys, chem)): return
         self.jumpnetwork_index = []  # list of list of indices into...
-        self.jumpnetwork_index2 = []  # list of list of indices into...
+        # self.jumpnetwork_index2 = []  # list of list of indices into...
         self.jumplist = []  # list of our jumps, as PairStates
-        self.jumplist2 = []  # list of our w2 jumps, as PairStates
-        if not meta_tags:
-            self.meta_tags = []
-            for x in crys.basis:
-                self.meta_tags.append(False)
-        else:
-            self.meta_tags = meta_tags.copy()
+        # self.jumplist2 = []  # list of our w2 jumps, as PairStates
+        self.meta_sites = tuple(meta_sites)
         ind = 0
         # ind_2 = 0
         for jlist in jumpnetwork:
@@ -796,27 +792,42 @@ class StarSetMeta(StarSet):
                 #         i_indx = site_index
                 #     if PS.j in sites:
                 #         j_indx = site_index
-                # if (not self.meta_tags[i_indx]) and (not self.meta_tags[i_indx]):
+                # if (not self.meta_sites[i_indx]) and (not self.meta_sites[i_indx]):
                 #     self.jumpnetwork_index2[-1].append(ind_2)
                 #     ind_2 += 1
                 #     self.jumplist2.append(PS)
-        if jumpnetwork2:
-            ind = 0
-            for jlist in jumpnetwork2:
-                self.jumpnetwork_index2.append([])
-                for ij, v in jlist:
-                    self.jumpnetwork_index2[-1].append(ind)
-                    ind += 1
-                    if lattice: PS = PairState.fromcrys_latt(crys, chem, ij, v)
-                    else: PS = PairState.fromcrys(crys, chem, ij, v)
-                    self.jumplist2.append(PS)
-        else:
-            self.jumpnetwork_index2 = self.jumpnetwork_index.copy()
-            self.jumplist2 = self.jumplist.copy()
+        # if jumpnetwork2:
+        #     ind = 0
+        #     for jlist in jumpnetwork2:
+        #         self.jumpnetwork_index2.append([])
+        #         for ij, v in jlist:
+        #             self.jumpnetwork_index2[-1].append(ind)
+        #             ind += 1
+        #             if lattice: PS = PairState.fromcrys_latt(crys, chem, ij, v)
+        #             else: PS = PairState.fromcrys(crys, chem, ij, v)
+        #             self.jumplist2.append(PS)
+        # else:
+        #     self.jumpnetwork_index2 = self.jumpnetwork_index.copy()
+        #     self.jumplist2 = self.jumplist.copy()
 
         self.crys = crys
         self.chem = chem
         self.generate(Nshells)
+
+    def getpairstates(self,network):
+        """ Convert network of jumps to pair states """
+        ind = 0
+        jumpnetwork_index = []
+        jumplist = []
+        for jlist in network:
+            jumpnetwork_index.append([])
+            for ij, v in jlist:
+                jumpnetwork_index[-1].append(ind)
+                ind += 1
+                PS = PairState.fromcrys(self.crys, self.chem, ij, v)
+                jumplist.append(PS)
+        return jumpnetwork_index, jumplist
+
 
     def copy(self, empty=False):
         """Return a copy of the StarSet; done as efficiently as possible; empty means skip the shells, etc."""
@@ -833,9 +844,9 @@ class StarSetMeta(StarSet):
             newStarSet.Nstates = self.Nstates
             newStarSet.index = self.index.copy()
             newStarSet.indexdict = self.indexdict.copy()
-            newStarSet.meta_tags = self.meta_tags.copy()
-            newStarSet.jumplist2 = self.jumplist2.copy()
-            newStarSet.jumpnetwork_index2 =copy.deepcopy(self.jumpnetwork_index2)
+            newStarSet.meta_sites = self.meta_sites.copy()
+            # newStarSet.jumplist2 = self.jumplist2.copy()
+            # newStarSet.jumpnetwork_index2 =copy.deepcopy(self.jumpnetwork_index2)
         else: newStarSet.generate(0)
         return newStarSet
 
@@ -855,27 +866,32 @@ class StarSetMeta(StarSet):
         # modification start: make a list of states to be deleted
         if Nshells > 0:
             state_delete_list = []
-            #print(meta_tags)
+            #print(meta_sites)
             #print(self.crys.sitelist(0))
             for state_indx, state in enumerate(self.jumplist):
-                for site_index, sites in enumerate(self.crys.sitelist(0)):
-                    if state.i in sites:
-                        i_indx = site_index
-                    if state.j in sites:
-                        j_indx = site_index
-                if self.meta_tags[i_indx]:
-                        #if state.i is not state.j:
-                        state_delete_list.append(state_indx)
-                        continue
-                elif self.meta_tags[j_indx]:
-                        state_delete_list.append(state_indx)
-                        continue
+
+                if state.i in self.meta_sites or state.j in self.meta_sites:
+                    state_delete_list.append(state_indx)
+                    continue
+                # for site_index, sites in enumerate(self.crys.sitelist(0)):
+                #     if state.i in sites:
+                #         i_indx = site_index
+                #     if state.j in sites:
+                #         j_indx = site_index
+                # if self.meta_sites[i_indx]:
+                #         #if state.i is not state.j:
+                #         state_delete_list.append(state_indx)
+                #         continue
+                # elif self.meta_sites[j_indx]:
+                #         state_delete_list.append(state_indx)
+                #         continue
 
                 # for site_index, sites in enumerate(self.crys.sitelist(0)):
-                #    if state.i in sites and meta_tags[site_index]:
+                #    if state.i in sites and meta_sites[site_index]:
                 #         if state.i is not state.j:
                 #             state_delete_list.append(state_indx)
                 #             break
+
             indx = 0
             tempstates = []
             for state_indx, state in enumerate(self.jumplist):
@@ -902,36 +918,26 @@ class StarSetMeta(StarSet):
                     try: s = s1 + s2
                     except: continue
                     if not s.iszero():
-                        to_add = True
-                        i_indx = 0
-                        j_indx = 0
-                        for site_index, sites in enumerate(self.crys.sitelist(0)):
-                            if s.i in sites:
-                                i_indx = site_index
-                            if s.j in sites:
-                                j_indx = site_index
-                        if self.meta_tags[i_indx]:
-                            to_add = False
-                        # elif meta_tags[j_indx]:
-                        #     for s3 in self.jumplist:
-                        #         if np.allclose(abs(s3.dx-s.dx), [0, 0, 0]):
-                        #             print("s: ", s)
-                        #             print("s3 ", s3)
-                        #             to_add = False
-                        #             break
-                        # for site_index, sites in enumerate(self.crys.sitelist(0)):
-                        #     if s.i in sites and meta_tags[site_index]:
-                        #         to_add = False
-
-                        if to_add:
+                        if s.i in self.meta_sites:
+                            continue
+                        else:
                             nextshell.add(s)
                             stateset.add(s)
-                    # else:
-                    #     for site_index, sites in enumerate(self.crys.sitelist(0)):
-                    #        if s.i in sites and meta_tags[site_index]:
-                    #             nextshell.add(s)
-                    #             stateset.add(s)
-                    #             break
+
+                        # to_add = True
+                        # i_indx = 0
+                        # j_indx = 0
+                        # for site_index, sites in enumerate(self.crys.sitelist(0)):
+                        #     if s.i in sites:
+                        #         i_indx = site_index
+                        #     if s.j in sites:
+                        #         j_indx = site_index
+                        # if self.meta_sites[i_indx]:
+                        #     to_add = False
+
+                        # if to_add:
+                        #     nextshell.add(s)
+                        #     stateset.add(s)
 
             lastshell = nextshell
         # now to sort our set of vectors (easiest by magnitude, and then reduce down:
@@ -977,9 +983,16 @@ class StarSetMeta(StarSet):
                 self.index[xi] = si
                 self.indexdict[self.states[xi]] = (xi, si)
 
-    def jumpnetwork_omega2(self):
+    def jumpnetwork_omega2(self, jumpnetwork2 = ()):
         """
         Generate a jumpnetwork corresponding to vacancy exchanging with a solute.
+
+        Function is still being tested. Trying to return the reference omega0 jumps for the purpose of
+        matrix implementation.
+
+        :param jumpnetwork2: list of symmetry unique jumps which form the replacement network; list
+          of list of tuples (i,f), dx where i,f index into states for the initial and final states,
+          and dx = displacement of vacancy in Cartesian coordinates.
         :return jumpnetwork: list of symmetry unique jumps; list of list of tuples (i,f), dx where
           i,f index into states for the initial and final states, and dx = displacement of vacancy
           in Cartesian coordinates. Note: if (i,f), dx is present, so is (f,i), -dx
@@ -987,53 +1000,86 @@ class StarSetMeta(StarSet):
           symmetry unique jump; useful for constructing a LIMB approximation
         :return starpair: list of tuples of the star indices of the i and f states for each
           symmetry unique jump
+        :return refnetwork: list of symmetry unique jumps corresponding to the original(w0) network;
+          list of list of tuples (i,f), dx where i,f index into states for the initial and final states,
+          and dx = displacement of vacancy in Cartesian coordinates. Note: if (i,f), dx is present,
+          so is (f,i), -dx
         """
 
         if self.Nshells < 1: return []
         jumpnetwork = []
-        dx_old = []
+        refnetwork = []
+        # dx_old = []
         jumptype = []
         starpair = []
-        for jt, jumpindices in enumerate(self.jumpnetwork_index2):
-            for jump in [self.jumplist2[j] for j in jumpindices]:
+        jumpnetwork_index2, jumplist2 = self.getpairstates(jumpnetwork2)
+        # index = 0
+        # for jt, jumpindices in enumerate(self.jumpnetwork_index2):
+        #     for jump in [self.jumplist2[j] for j in jumpindices]:
+        #         for i, PSi in enumerate(self.states):
+        #
+        #             i_i_indx = 0
+        #             i_j_indx = 0
+        #             for site_index, sites in enumerate(self.crys.sitelist(0)):
+        #                 if PSi.i in sites:
+        #                     i_i_indx = site_index
+        #                 if PSi.j in sites:
+        #                     i_j_indx = site_index
+        #
+        #             if PSi.iszero():
+        #                 continue
+        #             elif self.meta_sites[i_i_indx] or self.meta_sites[i_j_indx]:
+        #                 continue
+        #             # attempt to add...
+        #             try: PSf = PSi + jump
+        #             except: continue
+        #
+        #             if not PSf.iszero():
+        #                 continue
+        #             f = self.stateindex(-PSi)  # exchange
+        #             # see if we've already generated this jump (works since all of our states are distinct)
+        #             if any(any( i==i0 and f==f0 for (i0,f0), dx in jlist) for jlist in jumpnetwork): continue
+        #             dx = -PSi.dx  # the vacancy jumps into the solute position (exchange)
+        #             jumpnetwork.append(self.symmequivjumplist(i, f, dx))
+        #             jumptype.append(jt)
+        #             starpair.append((self.index[i], self.index[f]))
+        #             if jt:
+        #                 dx_old.append(dx/2.0)
+        #             else:
+        #                 dx_old.append(dx)
+
+        for jt, jumpindices in enumerate(self.jumpnetwork_index):
+            for jump in [self.jumplist[j] for j in jumpindices]:
                 for i, PSi in enumerate(self.states):
-
-                    i_i_indx = 0
-                    i_j_indx = 0
-                    for site_index, sites in enumerate(self.crys.sitelist(0)):
-                        if PSi.i in sites:
-                            i_i_indx = site_index
-                        if PSi.j in sites:
-                            i_j_indx = site_index
-
-                    if PSi.iszero():
-                        continue
-                    elif self.meta_tags[i_i_indx] or self.meta_tags[i_j_indx]:
-                        continue
+                    if PSi.iszero(): continue
                     # attempt to add...
-                    try: PSf = PSi + jump
-                    except: continue
-
-                    if not PSf.iszero():
+                    try:
+                        PSf = PSi + jump
+                    except:
                         continue
+                    if not PSf.iszero(): continue
                     f = self.stateindex(-PSi)  # exchange
                     # see if we've already generated this jump (works since all of our states are distinct)
-                    if any(any( i==i0 and f==f0 for (i0,f0), dx in jlist) for jlist in jumpnetwork): continue
+                    if any(any(i == i0 and f == f0 for (i0, f0), dx in jlist) for jlist in jumpnetwork): continue
                     dx = -PSi.dx  # the vacancy jumps into the solute position (exchange)
                     jumpnetwork.append(self.symmequivjumplist(i, f, dx))
                     jumptype.append(jt)
                     starpair.append((self.index[i], self.index[f]))
-                    if jt:
-                        dx_old.append(dx/2.0)
-                    else:
-                        dx_old.append(dx)
-        return jumpnetwork, jumptype, starpair, dx_old
+                    refnetwork.append([])
+                    for jump_w2 in jumpnetwork[-1]:
+                        for jump_w0 in self.jumplist:
+                            if np.allclose(jump_w2[1], jump_w0.dx):
+                                refnetwork[-1].append(jump_w0)
+                                continue
+
+        return jumpnetwork, jumptype, starpair, refnetwork
 
 
-    def jumpnetwork_omega1(self, deleted_states = None):
+    def jumpnetwork_omega1(self, deleted_states = ()):
         """
         Generate a jumpnetwork corresponding to vacancy jumping while the solute remains fixed.
 
+        :param deleted_states: list of tuples of 'deleted' pair states to which vacancy cannot jump.
         :return jumpnetwork: list of symmetry unique jumps; list of list of tuples (i,f), dx where
             i,f index into states for the initial and final states, and dx = displacement of vacancy
             in Cartesian coordinates. Note: if (i,f), dx is present, so if (f,i), -dx
@@ -1042,13 +1088,17 @@ class StarSetMeta(StarSet):
             construct delta_omega
         :return starpair: list of tuples of the star indices of the i and f states for each
             symmetry unique jump
+        :return refnetwork: list of w0 jumps corresponding to the w1 network; list of list of tuples (i,f), dx where
+            i,f index into states for the initial and final states, and dx = displacement of vacancy
+            in Cartesian coordinates.
+        :return zeroed_jumps: list of indices into the jumpnetwork for the zeroed out jumps.
         """
         if self.Nshells < 1: return []
         jumpnetwork = []
         jumptype = []
         starpair = []
-        replaced_network = []
-        zeroed_jumps = [] # these originate from a meta state
+        zeroed_jumps = [] # these either originate from a deleted state
+        refnetwork = [] # reference w0 network
         index = 0
         for jt, jumpindices in enumerate(self.jumpnetwork_index):
             for jump in [self.jumplist[j] for j in jumpindices]:
@@ -1065,10 +1115,11 @@ class StarSetMeta(StarSet):
                     # see if we've already generated this jump (works since all of our states are distinct)
                     if any(any(i == i0 and f == f0 for (i0, f0), dx in jlist) for jlist in jumpnetwork): continue
                     dx = PSf.dx - PSi.dx
-
-                    if PSi in deleted_states:  # is initial state deleted? then rate will be zeroed out
+                    # is initial state deleted? then rate to be added will be zeroed out
+                    if PSi in deleted_states:
                         zeroed_jumps.append(index)
-                    elif PSf in deleted_states:  # is final state deleted? then distance will be doubled
+                    # is final state deleted? then distance will be doubled (hard coded for now but need to change)
+                    elif PSf in deleted_states:
                         try:
                             PSflong = PSi + 2*jump
                         except:
@@ -1077,15 +1128,21 @@ class StarSetMeta(StarSet):
                         flong = self.stateindex(PSflong)
                         if flong is None: continue  # outside our StarSet
                         if any(any(i == i0 and flong == f0 for (i0, f0), dx in jlist) for jlist in jumpnetwork): continue
-                        replaced_network.append((index, self.symmequivjumplist(i, f, dx)))
                         PSf = PSflong
                         dx = PSf.dx - PSi.dx
 
                     jumpnetwork.append(self.symmequivjumplist(i, f, dx))
                     jumptype.append(jt)
                     starpair.append((self.index[i], self.index[f]))
+                    refnetwork.append([])
+                    for jump_w1 in jumpnetwork[-1]:
+                        for jump_w0 in self.jumplist:
+                            if np.allclose(jump_w1[1], jump_w0.dx)\
+                                    or np.allclose(jump_w1[1]/2.0, jump_w0.dx):
+                                refnetwork[-1].append(jump_w0)
+                                continue
                     index += 1
-        return jumpnetwork, jumptype, starpair, replaced_network, zeroed_jumps
+        return jumpnetwork, jumptype, starpair, refnetwork, zeroed_jumps
 
 
 class VectorStarSet(object):
