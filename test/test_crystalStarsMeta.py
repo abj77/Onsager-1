@@ -139,3 +139,19 @@ class JumpNetworkTests(unittest.TestCase):
                     si = self.starset.index[i]
                     sf = self.starset.index[f]
                     self.assertTrue((s1, s2) == (si, sf) or (s1, s2) == (sf, si))
+
+class HCPMetaTests(unittest.TestCase):
+    """Set of tests specific to the HCP lattice with metastable states."""
+    longMessage = False
+
+    def setUp(self):
+        self.crys, self.jumpnetwork, self.jumpnetwork2, self.meta_sites = setupHCPMeta()
+        self.chem = 0
+        self.starset = stars.StarSetMeta(self.jumpnetwork, self.crys, self.chem, meta_sites=self.meta_sites)
+
+    def testStateGeneration(self):
+        """Check that the generate code is working correctly for metastable states"""
+        self.starset.generate(2)
+        print(self.starset.states)
+        for s in self.starset.states:
+            self.assertTrue(s.i not in self.meta_sites)
