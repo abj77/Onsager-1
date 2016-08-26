@@ -140,6 +140,12 @@ class JumpNetworkTests(unittest.TestCase):
                     sf = self.starset.index[f]
                     self.assertTrue((s1, s2) == (si, sf) or (s1, s2) == (sf, si))
 
+
+            for jumplist, w0list in zip(jumpnetwork, ref):
+                for i, ((ji, jf), dx) in enumerate(jumplist):
+                    self.assertTrue(np.allclose(dx, w0list[i].dx))
+
+
 class HCPMetaTests(unittest.TestCase):
     """Set of tests specific to the HCP lattice with metastable states."""
     longMessage = False

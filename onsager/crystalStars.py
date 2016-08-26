@@ -1547,7 +1547,7 @@ class VectorStarSetMeta(VectorStarSet):
             if starset.Nshells > 0:
                 self.generate(starset)
 
-    def rateexpansions(self, jumpnetwork, jumptype, omega2=False, zeroed_states=(), replaced_jumps=(), dx_old=()):
+    def rateexpansions(self, jumpnetwork, jumptype, refnetwork, omega2=False, zeroed_states=(), replaced_jumps=()):
         """
         Construct the omega0 and omega1 matrix expansions in terms of the jumpnetwork;
         includes the escape terms separately. The escape terms are tricky because they have
@@ -1623,7 +1623,7 @@ class VectorStarSetMeta(VectorStarSet):
                zeroclean(rate1expansion), zeroclean(rate1escape)
 
 
-    def biasexpansions(self, jumpnetwork, jumptype, omega2=False, replaced_jumps=(), dx_old=()):
+    def biasexpansions(self, jumpnetwork, jumptype, refnetwork, omega2=False, replaced_jumps=()):
         """
         Construct the bias1 and bias0 vector expansion in terms of the jumpnetwork.
         We return the bias0 contribution so that the db = bias1 - bias0 can be determined.
