@@ -89,7 +89,7 @@ class JumpNetworkTests(unittest.TestCase):
         self.assertEqual(sp[0], (0, 0))
         self.assertEqual([], zerojumps)
 
-        jumpnetwork2, jt, sp, ref = self.starset.jumpnetwork_omega2()
+        jumpnetwork2, jt, sp, ref, zerojumps = self.starset.jumpnetwork_omega2()
         self.assertEqual(len(jumpnetwork2), 1)
         self.assertEqual(len(jumpnetwork2[0]), len(self.jumpnetwork[0]))
         self.assertEqual(jt[0], 0)
@@ -121,7 +121,7 @@ class JumpNetworkTests(unittest.TestCase):
         self.assertEqual(sum(len(jlist) for jlist in jumpnetwork), 12 * 11 + 6 * 8 + 24 * 7 + 12 * 5)
         self.assertEqual(sum(len(jlist) for jlist in ref), 12 * 11 + 6 * 8 + 24 * 7 + 12 * 5)
         # check that nothing changed with the larger StarSet
-        jumpnetwork2, jt, sp, ref = self.starset.jumpnetwork_omega2()
+        jumpnetwork2, jt, sp, ref, zerojumps = self.starset.jumpnetwork_omega2()
         self.assertEqual(len(jumpnetwork2), 1)
         self.assertEqual(len(ref), 1)
         self.assertEqual(len(jumpnetwork2[0]), len(self.jumpnetwork[0]))

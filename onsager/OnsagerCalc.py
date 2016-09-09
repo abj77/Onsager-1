@@ -1608,7 +1608,7 @@ class VacancyMediatedMeta(VacancyMediated):
         self.Dom2_om0, self.Dom2 = self.vkinetic.bareexpansions(self.om2_jn, self.om2_jt)
         self.om1_om0, self.om1_om0escape, self.om1expansion, self.om1escape = \
             self.vkinetic.rateexpansions(self.om1_jn, self.om1_jt, replaced_network = self.rep_network,
-                                         zeroed_states = self.zero_states)
+                                         zeroed_states= self.zero_states)
         self.om2_om0, self.om2_om0escape, self.om2expansion, self.om2escape = \
             self.vkinetic.rateexpansions(self.om2_jn, self.om2_jt, omega2=True, dx_old = self.dx_old)
         self.om1_b0, self.om1bias = self.vkinetic.biasexpansions(self.om1_jn, self.om1_jt,
