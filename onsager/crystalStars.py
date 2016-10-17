@@ -1070,7 +1070,7 @@ class StarSetMeta(StarSet):
 
         return jumpnetwork, jumptype, starpair, refnetwork, zeroed_jumps, modified_jumps, replaced_network
 
-    def jumpnetwork_omega1(self, deleted_states = ()):
+    def jumpnetwork_omega1(self, deleted_states = (), jumpnetwork2 = ()):
         """
         Generate a jumpnetwork corresponding to vacancy jumping while the solute remains fixed.
 
@@ -1093,6 +1093,10 @@ class StarSetMeta(StarSet):
         jumpnetwork = []
         jumptype = []
         starpair = []
+        if not jumpnetwork2:
+            jumpnetwork_index2, jumplist2 = self.jumpnetwork_index.copy(), self.jumplist.copy()
+        else:
+            jumpnetwork_index2, jumplist2 = self.getpairstates(jumpnetwork2)
         zeroed_jumps = [] # these jumps originate from a deleted state
         modified_jumps = []  # "long" jumps crossing over a deleted state
         refnetwork = [] # reference w0 network corresponding to long/deleted jumps
@@ -1101,7 +1105,8 @@ class StarSetMeta(StarSet):
             for jump in [self.jumplist[j] for j in jumpindices]:
                 for i, PSi in enumerate(self.states):
                     jump_zeroed = 0
-                    long_jump = 0
+                    is_long = 0
+                    long_jump = None
                     if PSi.iszero(): continue
                     #elif PSi.i in self.meta_sites:
                     #    continue
@@ -1115,36 +1120,45 @@ class StarSetMeta(StarSet):
                     f = self.stateindex(PSf)
                     if f is None: continue  # outside our StarSet
                     # see if we've already generated this jump (works since all of our states are distinct)
-                    if any(any(i == i0 and f == f0 for (i0, f0), dx in jlist) for jlist in jumpnetwork): continue
                     dx = PSf.dx - PSi.dx
                     # is initial state deleted? then rate to be added will be zeroed out
                     if PSi in deleted_states:
+                        if any(any(i == i0 and f == f0 for (i0, f0), dx in jlist) for jlist in jumpnetwork): continue
                         jump_zeroed = 1
                     # is final state deleted? then distance will be doubled (hard coded for now but need to change)
                     elif PSf in deleted_states:
+                        for new_jump in [jumplist2[j] for j in jumpnetwork_index2[jt]]:
+                            if new_jump.i == jump.i:
+                                if np.allclose(new_jump.dx/np.linalg.norm(new_jump.dx)-jump.dx/np.linalg.norm(jump.dx), np.zeros(3)):
+                                    long_jump = new_jump
+                                    break
                         try:
-                            PSflong = PSi + 2*jump
+                            PSflong = PSi + long_jump
                         except:
                             continue
+
                         if PSflong.iszero(): continue
                         flong = self.stateindex(PSflong)
                         if flong is None: continue  # outside our StarSet
                         if any(any(i == i0 and flong == f0 for (i0, f0), dx in jlist) for jlist in jumpnetwork): continue
                         PSf = PSflong
+                        f=flong
                         dx = PSf.dx - PSi.dx
-                        long_jump = 1
+                        is_long = 1
+                    else:
+                        if any(any(i == i0 and f == f0 for (i0, f0), dx in jlist) for jlist in jumpnetwork): continue
                     jumpnetwork.append(self.symmequivjumplist(i, f, dx))
                     jumptype.append(jt)
                     starpair.append((self.index[i], self.index[f]))
                     refnetwork.append([])
-                    if jump_zeroed or long_jump:
+                    if jump_zeroed or is_long:
                         for jump_w1 in jumpnetwork[-1]:
                             for jump_w0 in self.jumplist:
                                 if np.allclose(jump_w1[1], jump_w0.dx):
                                     refnetwork[-1].append(jump_w0)
                                     break
                     zeroed_jumps.append(jump_zeroed)
-                    modified_jumps.append(long_jump)
+                    modified_jumps.append(is_long)
 
         replaced_network = []
         todel = []
@@ -1158,7 +1172,7 @@ class StarSetMeta(StarSet):
                         if(l):
                             for m, ((i1, f1), dx1) in enumerate(jumpnetwork[k]):
                                 pi1 = self.states[i1]
-                                if pi0.i == pi1.i and pi0.j == pi1.j and np.allclose(dx0/2-dx1, np.zeros(3)):
+                                if i0 == i1 and np.allclose(dx0/np.linalg.norm(dx0)-dx1/np.linalg.norm(dx1), np.zeros(3)):
                                     temp_net.append(jumpnetwork[k][m])
                                     jumpnetwork[k].remove(jumpnetwork[k][m])
                                     break
