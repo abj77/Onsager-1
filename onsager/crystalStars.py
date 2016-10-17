@@ -1692,7 +1692,7 @@ class VectorStarSetMeta(VectorStarSet):
                zeroclean(rate1expansion), zeroclean(rate1escape)
 
 
-    def biasexpansions(self, jumpnetwork, jumptype, omega2=False, refnetwork=(), modified_jumps=()):
+    def biasexpansions(self, jumpnetwork, jumptype, omega2=False, rep_network=()):
         """
         Construct the bias1 and bias0 vector expansion in terms of the jumpnetwork.
         We return the bias0 contribution so that the db = bias1 - bias0 can be determined.
@@ -1730,12 +1730,6 @@ class VectorStarSetMeta(VectorStarSet):
                     if svR[0] == IS:
                         geom_bias = np.dot(svv[0], dx) * len(svR)
                         bias1expansion[i, k] += geom_bias
-                        if modified_jumps[k]:
-                            dxref = refnetwork[k][l].dx
-                            geom_bias2 = np.dot(svv[0], dxref) * len(svR)
-                            bias0expansion[i, jt] += geom_bias2
-                        else:
-                            bias0expansion[i, jt] += geom_bias
                 if omega2:
                     # find the "origin state" corresponding to the solute; incorporate the change in bias
                     OSindex = self.starset.stateindex(PairState.zero(self.starset.states[IS].i))
@@ -1745,18 +1739,59 @@ class VectorStarSetMeta(VectorStarSet):
                                 if Rj == OSindex:
                                     geom_bias = -np.dot(vj, dx)
                                     bias1expansion[j, k] += geom_bias  # do we need this??
-                                    if modified_jumps[k]:
-                                        dxref = refnetwork[k][l].dx
-                                        geom_bias2 = -np.dot(vj, dxref)
-                                        bias0expansion[j, jt] += geom_bias2
-                                    else:
-                                        bias0expansion[j, jt] += geom_bias
+
+        for k, jumplist, jt in zip(itertools.count(), rep_network, jumptype):
+            for l, ((IS, FS), dx) in enumerate(jumplist):
+                # run through the star-vectors; just use first as representative
+                for i, svR, svv in zip(itertools.count(), self.vecpos, self.vecvec):
+                    if svR[0] == IS:
+                        geom_bias = np.dot(svv[0], dx) * len(svR)
+                        bias0expansion[i, jt] += geom_bias
+                if omega2:
+                    # find the "origin state" corresponding to the solute; incorporate the change in bias
+                    OSindex = self.starset.stateindex(PairState.zero(self.starset.states[IS].i))
+                    if OSindex is not None:
+                        for j in range(self.Nvstars):
+                            for Rj, vj in zip(self.vecpos[j], self.vecvec[j]):
+                                if Rj == OSindex:
+                                    geom_bias = -np.dot(vj, dx)
+                                    bias0expansion[j, jt] += geom_bias
+
+
+        # for k, jumplist, jt in zip(itertools.count(), jumpnetwork, jumptype):
+        #     for l, ((IS, FS), dx) in enumerate(jumplist):
+        #         # run through the star-vectors; just use first as representative
+        #         for i, svR, svv in zip(itertools.count(), self.vecpos, self.vecvec):
+        #             if svR[0] == IS:
+        #                 geom_bias = np.dot(svv[0], dx) * len(svR)
+        #                 bias1expansion[i, k] += geom_bias
+        #                 if modified_jumps[k]:
+        #                     dxref = refnetwork[k][l].dx
+        #                     geom_bias2 = np.dot(svv[0], dxref) * len(svR)
+        #                     bias0expansion[i, jt] += geom_bias2
+        #                 else:
+        #                     bias0expansion[i, jt] += geom_bias
+        #         if omega2:
+        #             # find the "origin state" corresponding to the solute; incorporate the change in bias
+        #             OSindex = self.starset.stateindex(PairState.zero(self.starset.states[IS].i))
+        #             if OSindex is not None:
+        #                 for j in range(self.Nvstars):
+        #                     for Rj, vj in zip(self.vecpos[j], self.vecvec[j]):
+        #                         if Rj == OSindex:
+        #                             geom_bias = -np.dot(vj, dx)
+        #                             bias1expansion[j, k] += geom_bias  # do we need this??
+        #                             if modified_jumps[k]:
+        #                                 dxref = refnetwork[k][l].dx
+        #                                 geom_bias2 = -np.dot(vj, dxref)
+        #                                 bias0expansion[j, jt] += geom_bias2
+        #                             else:
+        #                                 bias0expansion[j, jt] += geom_bias
 
         # cleanup on return
         return zeroclean(bias0expansion), zeroclean(bias1expansion)
 
 
-    def bareexpansions(self, jumpnetwork, jumptype,refnetwork=(), modified_jumps=()):
+    def bareexpansions(self, jumpnetwork, jumptype, refnetwork=(), modified_jumps=(), rep_network=()):
         """
         Construct the bare diffusivity expansion in terms of the jumpnetwork.
         We return the reference (0) contribution so that the change can be determined; this
@@ -1782,15 +1817,23 @@ class VectorStarSetMeta(VectorStarSet):
         if self.Nvstars == 0: return None
         D0expansion = np.zeros((3, 3, len(self.starset.jumpnetwork_index)))
         D1expansion = np.zeros((3, 3, len(jumpnetwork)))
+
         for k, jt, jumplist in zip(itertools.count(), jumptype, jumpnetwork):
-            d1 = np.sum(0.5 * np.outer(dx, dx) for ISFS, dx in jumplist)  # we don't need initial/final state
-            #print("d1= ",d1)
-            if modified_jumps[k]:
-                d0 = np.sum(0.5 * np.outer(jump.dx, jump.dx) for jump in refnetwork[k])  # we don't need initial/final state
-                #print("d0= ", d0)
-            else:
-                d0 = np.sum(0.5 * np.outer(dx, dx) for ISFS, dx in jumplist)  # we don't need initial/final state
-            D0expansion[:, :, jt] += d0
-            D1expansion[:, :, k] += d1
+            d = np.sum(0.5 * np.outer(dx, dx) for ISFS, dx in jumplist)  # we don't need initial/final state
+            D1expansion[:, :, k] += d
+        for k, jt, jumplist in zip(itertools.count(), jumptype, rep_network):
+            d = np.sum(0.5 * np.outer(dx, dx) for ISFS, dx in jumplist)  # we don't need initial/final state
+            D0expansion[:, :, jt] += d
+
+        # for k, jt, jumplist in zip(itertools.count(), jumptype, jumpnetwork):
+        #     d1 = np.sum(0.5 * np.outer(dx, dx) for ISFS, dx in jumplist)  # we don't need initial/final state
+        #     #print("d1= ",d1)
+        #     if modified_jumps[k]:
+        #         d0 = np.sum(0.5 * np.outer(jump.dx, jump.dx) for jump in refnetwork[k])  # we don't need initial/final state
+        #         #print("d0= ", d0)
+        #     else:
+        #         d0 = np.sum(0.5 * np.outer(dx, dx) for ISFS, dx in jumplist)  # we don't need initial/final state
+        #     D0expansion[:, :, jt] += d0
+        #     D1expansion[:, :, k] += d1
         # cleanup on return
         return zeroclean(D0expansion), zeroclean(D1expansion)

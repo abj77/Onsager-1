@@ -1602,14 +1602,14 @@ class VacancyMediatedMeta(VacancyMediated):
         This has been separated out in case the user wants to, e.g., prune / modify the networks
         after they've been created with generate(), then generatematrices() can be rerun.
         """
-        self.Dom1_om0, self.Dom1 = self.vkinetic.bareexpansions(self.om1_jn, self.om1_jt, refnetwork=self.ref_network1, modified_jumps=self.mod_jumps1)
-        self.Dom2_om0, self.Dom2 = self.vkinetic.bareexpansions(self.om2_jn, self.om2_jt, refnetwork=self.ref_network2, modified_jumps=self.mod_jumps2)
+        self.Dom1_om0, self.Dom1 = self.vkinetic.bareexpansions(self.om1_jn, self.om1_jt, rep_network=self.rep_net1)
+        self.Dom2_om0, self.Dom2 = self.vkinetic.bareexpansions(self.om2_jn, self.om2_jt, rep_network=self.rep_net2)
         self.om1_om0, self.om1_om0escape, self.om1expansion, self.om1escape = \
             self.vkinetic.rateexpansions(self.om1_jn, self.om1_jt, zero_jumps=self.zero_jumps1, rep_network=self.rep_net1)
         self.om2_om0, self.om2_om0escape, self.om2expansion, self.om2escape = \
             self.vkinetic.rateexpansions(self.om2_jn, self.om2_jt, omega2=True, zero_jumps=self.zero_jumps2, rep_network=self.rep_net2)
-        self.om1_b0, self.om1bias = self.vkinetic.biasexpansions(self.om1_jn, self.om1_jt, refnetwork=self.ref_network1, modified_jumps=self.mod_jumps1)
-        self.om2_b0, self.om2bias = self.vkinetic.biasexpansions(self.om2_jn, self.om2_jt, omega2=True,refnetwork=self.ref_network2, modified_jumps=self.mod_jumps2)
+        self.om1_b0, self.om1bias = self.vkinetic.biasexpansions(self.om1_jn, self.om1_jt, rep_network=self.rep_net1)
+        self.om2_b0, self.om2bias = self.vkinetic.biasexpansions(self.om2_jn, self.om2_jt, omega2=True, rep_network=self.rep_net2)
         self.OSindices, self.OSfolddown, self.OS_VB = self.vkinetic.originstateVectorBasisfolddown('solute')
         self.OSVfolddown = self.vkinetic.originstateVectorBasisfolddown('vacancy')[1]  # only need the folddown
 
