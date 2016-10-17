@@ -1525,12 +1525,12 @@ class VacancyMediated(object):
 class VacancyMediatedMeta(VacancyMediated):
     """Trying out metastable preening"""
 
-    def __init__(self, crys, chem, sitelist, jumpnetwork, Nthermo=0, NGFmax=4, meta_tags=[], jumpnetwork2=[],
-                 deleted_states=[]):
+    def __init__(self, crys, chem, sitelist, jumpnetwork, Nthermo=0, NGFmax=4, meta_sites=(), jumpnetwork2=(),
+                 deleted_states=()):
         """
         will fill it later
         """
-        if not meta_tags:
+        if not meta_sites.all():
             VacancyMediated.__init__(self,crys, chem, sitelist, jumpnetwork, Nthermo,NGFmax)
         else:
             if all(x is None for x in (crys, chem, sitelist, jumpnetwork)): return  # blank object
@@ -1546,20 +1546,17 @@ class VacancyMediatedMeta(VacancyMediated):
             self.om0_jn = copy.deepcopy(jumpnetwork)
             self.GFcalc = self.GFcalculator(NGFmax)
             # do some initial setup:
-            self.thermo = stars.StarSetMeta(self.jumpnetwork, self.crys, self.chem, Nthermo, meta_tags=meta_tags,
-                                            jumpnetwork2=jumpnetwork2)
-            self.kinetic = stars.StarSetMeta(self.jumpnetwork, self.crys, self.chem, Nthermo, meta_tags=meta_tags,
-                                            jumpnetwork2=jumpnetwork2)
-            self.NNstar = stars.StarSetMeta(self.jumpnetwork, self.crys, self.chem, 1, meta_tags=meta_tags,
-                                            jumpnetwork2=jumpnetwork2)
+            self.thermo = stars.StarSetMeta(self.jumpnetwork, self.crys, self.chem, Nthermo, meta_sites=meta_sites)
+            self.kinetic = stars.StarSetMeta(self.jumpnetwork, self.crys, self.chem, Nthermo, meta_sites=meta_sites)
+            self.NNstar = stars.StarSetMeta(self.jumpnetwork, self.crys, self.chem, 1, meta_sites=meta_sites)
             self.vkinetic = stars.VectorStarSetMeta()
             # separating out the thermo and kinetic part from here on
             # generate and prune thermo data
-            self.generatethermometa(Nthermo, deleted_states=deleted_states)
+            self.generatethermometa(Nthermo, deleted_states=deleted_states, jumpnetwork2=jumpnetwork2)
             self.generatematricesmeta()
-            self.tags, self.tagdict = self.generatetags()  # dict: vacancy, solute, solute-vacancy; omega0, omega1, omega2
+            self.tags, self.tagdict, self.tagdicttype = self.generatetags()
 
-    def generatethermometa(self, Nthermo, deleted_states = []):
+    def generatethermometa(self, Nthermo, deleted_states = (), jumpnetwork2=()):
         """
         will fill it later
         """
@@ -1587,9 +1584,10 @@ class VacancyMediatedMeta(VacancyMediated):
         self.kin2vstar = [[j for j in range(self.vkinetic.Nvstars) if self.vstar2kin[j] == i]
                           for i in range(self.kinetic.Nstars)]
         # jumpnetwork, jumptype (omega0), star-pair for jump
-        self.om1_jn, self.om1_jt, self.om1_SP, self.rep_network,self.zero_states = \
+        self.om1_jn, self.om1_jt, self.om1_SP, self.ref_network1, self.zero_jumps1, self.mod_jumps1, self.rep_net1 = \
             self.kinetic.jumpnetwork_omega1(deleted_states=deleted_states)
-        self.om2_jn, self.om2_jt, self.om2_SP, self.dx_old = self.kinetic.jumpnetwork_omega2()
+        self.om2_jn, self.om2_jt, self.om2_SP, self.ref_network2, self.zero_jumps2, self.mod_jumps2, self.rep_net2 = \
+            self.kinetic.jumpnetwork_omega2(jumpnetwork2=jumpnetwork2)
         # Prune the om1 list: remove entries that have jumps between stars in outerkin:
         # work in reverse order so that popping is safe (and most of the offending entries are at the end
         for i, SP in zip(reversed(range(len(self.om1_SP))), reversed(self.om1_SP)):
@@ -1604,17 +1602,14 @@ class VacancyMediatedMeta(VacancyMediated):
         This has been separated out in case the user wants to, e.g., prune / modify the networks
         after they've been created with generate(), then generatematrices() can be rerun.
         """
-        self.Dom1_om0, self.Dom1 = self.vkinetic.bareexpansions(self.om1_jn, self.om1_jt)
-        self.Dom2_om0, self.Dom2 = self.vkinetic.bareexpansions(self.om2_jn, self.om2_jt)
+        self.Dom1_om0, self.Dom1 = self.vkinetic.bareexpansions(self.om1_jn, self.om1_jt, refnetwork=self.ref_network1, modified_jumps=self.mod_jumps1)
+        self.Dom2_om0, self.Dom2 = self.vkinetic.bareexpansions(self.om2_jn, self.om2_jt, refnetwork=self.ref_network2, modified_jumps=self.mod_jumps2)
         self.om1_om0, self.om1_om0escape, self.om1expansion, self.om1escape = \
-            self.vkinetic.rateexpansions(self.om1_jn, self.om1_jt, replaced_network = self.rep_network,
-                                         zeroed_states= self.zero_states)
+            self.vkinetic.rateexpansions(self.om1_jn, self.om1_jt, zero_jumps=self.zero_jumps1, rep_network=self.rep_net1)
         self.om2_om0, self.om2_om0escape, self.om2expansion, self.om2escape = \
-            self.vkinetic.rateexpansions(self.om2_jn, self.om2_jt, omega2=True, dx_old = self.dx_old)
-        self.om1_b0, self.om1bias = self.vkinetic.biasexpansions(self.om1_jn, self.om1_jt,
-                                                                 replaced_network = self.rep_network)
-        self.om2_b0, self.om2bias = self.vkinetic.biasexpansions(self.om2_jn, self.om2_jt, omega2=True,
-                                                                 dx_old = self.dx_old)
+            self.vkinetic.rateexpansions(self.om2_jn, self.om2_jt, omega2=True, zero_jumps=self.zero_jumps2, rep_network=self.rep_net2)
+        self.om1_b0, self.om1bias = self.vkinetic.biasexpansions(self.om1_jn, self.om1_jt, refnetwork=self.ref_network1, modified_jumps=self.mod_jumps1)
+        self.om2_b0, self.om2bias = self.vkinetic.biasexpansions(self.om2_jn, self.om2_jt, omega2=True,refnetwork=self.ref_network2, modified_jumps=self.mod_jumps2)
         self.OSindices, self.OSfolddown, self.OS_VB = self.vkinetic.originstateVectorBasisfolddown('solute')
         self.OSVfolddown = self.vkinetic.originstateVectorBasisfolddown('vacancy')[1]  # only need the folddown
 
