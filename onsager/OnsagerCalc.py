@@ -1584,10 +1584,18 @@ class VacancyMediatedMeta(VacancyMediated):
         self.kin2vstar = [[j for j in range(self.vkinetic.Nvstars) if self.vstar2kin[j] == i]
                           for i in range(self.kinetic.Nstars)]
         # jumpnetwork, jumptype (omega0), star-pair for jump
-        self.om1_jn, self.om1_jt, self.om1_SP, self.ref_network1, self.zero_jumps1, self.mod_jumps1, self.rep_net1 = \
-            self.kinetic.jumpnetwork_omega1(deleted_states=deleted_states)
-        self.om2_jn, self.om2_jt, self.om2_SP, self.ref_network2, self.zero_jumps2, self.mod_jumps2, self.rep_net2 = \
+
+        self.om1_jn, self.om1_jt, self.om1_SP, self.ref_network1, self.om1_jt2, = \
+            self.kinetic.jumpnetwork_omega1(deleted_states=deleted_states, jumpnetwork2=jumpnetwork2)
+
+        # self.om1_jn, self.om1_jt, self.om1_SP, self.ref_network1, self.zero_jumps1, self.mod_jumps1, self.rep_net1 = \
+        #     self.kinetic.jumpnetwork_omega1(deleted_states=deleted_states, jumpnetwork2=jumpnetwork2)
+
+        self.om2_jn, self.om2_jt, self.om2_SP, self.ref_network2,self.om2_jt2   = \
             self.kinetic.jumpnetwork_omega2(jumpnetwork2=jumpnetwork2)
+
+        # self.om2_jn, self.om2_jt, self.om2_SP, self.ref_network2, self.zero_jumps2, self.mod_jumps2, self.rep_net2 = \
+        #     self.kinetic.jumpnetwork_omega2(jumpnetwork2=jumpnetwork2)
         # Prune the om1 list: remove entries that have jumps between stars in outerkin:
         # work in reverse order so that popping is safe (and most of the offending entries are at the end
         for i, SP in zip(reversed(range(len(self.om1_SP))), reversed(self.om1_SP)):
@@ -1602,14 +1610,14 @@ class VacancyMediatedMeta(VacancyMediated):
         This has been separated out in case the user wants to, e.g., prune / modify the networks
         after they've been created with generate(), then generatematrices() can be rerun.
         """
-        self.Dom1_om0, self.Dom1 = self.vkinetic.bareexpansions(self.om1_jn, self.om1_jt, rep_network=self.rep_net1)
-        self.Dom2_om0, self.Dom2 = self.vkinetic.bareexpansions(self.om2_jn, self.om2_jt, rep_network=self.rep_net2)
+        self.Dom1_om0, self.Dom1 = self.vkinetic.bareexpansions(self.om1_jn, self.om1_jt, refnetwork = self.ref_network1,jumptype2=self.om1_jt2)
+        self.Dom2_om0, self.Dom2 = self.vkinetic.bareexpansions(self.om2_jn, self.om2_jt, refnetwork = self.ref_network2,jumptype2=self.om2_jt2)
         self.om1_om0, self.om1_om0escape, self.om1expansion, self.om1escape = \
-            self.vkinetic.rateexpansions(self.om1_jn, self.om1_jt, zero_jumps=self.zero_jumps1, rep_network=self.rep_net1)
+            self.vkinetic.rateexpansions(self.om1_jn, self.om1_jt, refnetwork = self.ref_network1,jumptype2=self.om1_jt2)
         self.om2_om0, self.om2_om0escape, self.om2expansion, self.om2escape = \
-            self.vkinetic.rateexpansions(self.om2_jn, self.om2_jt, omega2=True, zero_jumps=self.zero_jumps2, rep_network=self.rep_net2)
-        self.om1_b0, self.om1bias = self.vkinetic.biasexpansions(self.om1_jn, self.om1_jt, rep_network=self.rep_net1)
-        self.om2_b0, self.om2bias = self.vkinetic.biasexpansions(self.om2_jn, self.om2_jt, omega2=True, rep_network=self.rep_net2)
+            self.vkinetic.rateexpansions(self.om2_jn, self.om2_jt, omega2=True, refnetwork = self.ref_network2,jumptype2=self.om2_jt2)
+        self.om1_b0, self.om1bias = self.vkinetic.biasexpansions(self.om1_jn, self.om1_jt, refnetwork = self.ref_network1,jumptype2=self.om1_jt2)
+        self.om2_b0, self.om2bias = self.vkinetic.biasexpansions(self.om2_jn, self.om2_jt, omega2=True, refnetwork = self.ref_network2,jumptype2=self.om2_jt2)
         self.OSindices, self.OSfolddown, self.OS_VB = self.vkinetic.originstateVectorBasisfolddown('solute')
         self.OSVfolddown = self.vkinetic.originstateVectorBasisfolddown('vacancy')[1]  # only need the folddown
 

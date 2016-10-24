@@ -967,7 +967,8 @@ class StarSetMeta(StarSet):
         jumpnetwork = []
         refnetwork = []
         # ref_network2 = []
-        jumptype = []
+        jumptype1 = []
+        jumptype2 = []
         starpair = []
         zeroed_jumps = []
         modified_jumps = []
@@ -994,23 +995,23 @@ class StarSetMeta(StarSet):
                     if any(any( i==i0 and f==f0 for (i0,f0), dx in jlist) for jlist in jumpnetwork): continue
                     dx = -PSi.dx  # the vacancy jumps into the solute position (exchange)
                     jumpnetwork.append(self.symmequivjumplist(i, f, dx))
-                    jumptype.append(jt)
+                    jumptype1.append(jt)
                     starpair.append((self.index[i], self.index[f]))
-                    refnetwork.append([])
-                    for jump_w2 in jumpnetwork[-1]:
-                        for jump_w0 in self.jumplist:
-                            if np.allclose(jump_w2[1], jump_w0.dx):
-                                refnetwork[-1].append(jump_w0)
-                                break
-                            elif np.allclose(jump_w2[1]/2.0, jump_w0.dx):
-                                refnetwork[-1].append(jump_w0)
-                                modified = 1
-                                break
-                    zeroed_jumps.append(0)
-                    if modified:
-                        modified_jumps.append(1)
-                    else:
-                        modified_jumps.append(0)
+                    #refnetwork.append([])
+                    #for jump_w2 in jumpnetwork[-1]:
+                    #    for jump_w0 in self.jumplist:
+                    #        if np.allclose(jump_w2[1], jump_w0.dx):
+                    #            refnetwork[-1].append(jump_w0)
+                    #            break
+                    #        elif np.allclose(jump_w2[1]/2.0, jump_w0.dx):
+                    #            refnetwork[-1].append(jump_w0)
+                    #            modified = 1
+                    #            break
+                    #zeroed_jumps.append(0)
+                    #if modified:
+                    #    modified_jumps.append(1)
+                    #else:
+                    #    modified_jumps.append(0)
 
         for jt, jumpindices in enumerate(self.jumpnetwork_index):
             for jump in [self.jumplist[j] for j in jumpindices]:
@@ -1026,49 +1027,49 @@ class StarSetMeta(StarSet):
                     if not PSf.iszero(): continue
                     f = self.stateindex(-PSi)  # exchange
                     # see if we've already generated this jump (works since all of our states are distinct)
-                    if any(any(i == i0 and f == f0 for (i0, f0), dx in jlist) for jlist in jumpnetwork): continue
+                    if any(any(i == i0 and f == f0 for (i0, f0), dx in jlist) for jlist in refnetwork): continue
                     dx = -PSi.dx  # the vacancy jumps into the solute position (exchange)
-                    jumpnetwork.append(self.symmequivjumplist(i, f, dx))
-                    jumptype.append(jt)
-                    starpair.append((self.index[i], self.index[f]))
-                    refnetwork.append([])
-                    for jump_w2 in jumpnetwork[-1]:
-                        for jump_w0 in self.jumplist:
-                            if np.allclose(jump_w2[1], jump_w0.dx):
-                                refnetwork[-1].append(jump_w0)
-                                break
-                    zeroed_jumps.append(1)
-                    modified_jumps.append(0)
+                    refnetwork.append(self.symmequivjumplist(i, f, dx))
+                    jumptype2.append(jt)
+                    #starpair.append((self.index[i], self.index[f]))
+                    # refnetwork.append([])
+                    # for jump_w2 in jumpnetwork[-1]:
+                    #     for jump_w0 in self.jumplist:
+                    #         if np.allclose(jump_w2[1], jump_w0.dx):
+                    #             refnetwork[-1].append(jump_w0)
+                    #             break
+                    # zeroed_jumps.append(1)
+                    # modified_jumps.append(0)
 
         # trying something out
 
-        replaced_network = []
-        todel = []
-        for i,j in enumerate(modified_jumps):
-            if(j):
-                temp_net = []
-                for (i0, f0), dx0 in jumpnetwork[i]:
-                    pi0 = self.states[i0]
-                    for k, l in enumerate(zeroed_jumps):
-                        if(l):
-                            for m, ((i1, f1), dx1) in enumerate(jumpnetwork[k]):
-                                pi1 = self.states[i1]
-                                if pi0.i == pi1.i and np.allclose(dx0/2-dx1, np.zeros(3)):
-                                    temp_net.append(jumpnetwork[k][m])
-                                    jumpnetwork[k].remove(jumpnetwork[k][m])
-                                    break
-                replaced_network.append(temp_net)
-            else:
-                replaced_network.append([])
+        # replaced_network = []
+        # todel = []
+        # for i,j in enumerate(modified_jumps):
+        #     if(j):
+        #         temp_net = []
+        #         for (i0, f0), dx0 in jumpnetwork[i]:
+        #             pi0 = self.states[i0]
+        #             for k, l in enumerate(zeroed_jumps):
+        #                 if(l):
+        #                     for m, ((i1, f1), dx1) in enumerate(jumpnetwork[k]):
+        #                         pi1 = self.states[i1]
+        #                         if pi0.i == pi1.i and np.allclose(dx0/2-dx1, np.zeros(3)):
+        #                             temp_net.append(jumpnetwork[k][m])
+        #                             jumpnetwork[k].remove(jumpnetwork[k][m])
+        #                             break
+        #         replaced_network.append(temp_net)
+        #     else:
+        #         replaced_network.append([])
+        #
+        # for i, j in enumerate(modified_jumps):
+        #     if(j):
+        #         continue
+        #     else:
+        #         for k in jumpnetwork[i]:
+        #             replaced_network[i].append(k)
 
-        for i, j in enumerate(modified_jumps):
-            if(j):
-                continue
-            else:
-                for k in jumpnetwork[i]:
-                    replaced_network[i].append(k)
-
-        return jumpnetwork, jumptype, starpair, refnetwork, zeroed_jumps, modified_jumps, replaced_network
+        return jumpnetwork, jumptype1, starpair, refnetwork, jumptype2 # zeroed_jumps, modified_jumps, replaced_network
 
     def jumpnetwork_omega1(self, deleted_states = (), jumpnetwork2 = ()):
         """
@@ -1092,13 +1093,14 @@ class StarSetMeta(StarSet):
         if self.Nshells < 1: return []
         jumpnetwork = []
         jumptype = []
+        jumptype2 = []
         starpair = []
         if not jumpnetwork2:
             jumpnetwork_index2, jumplist2 = self.jumpnetwork_index.copy(), self.jumplist.copy()
         else:
             jumpnetwork_index2, jumplist2 = self.getpairstates(jumpnetwork2)
-        zeroed_jumps = [] # these jumps originate from a deleted state
-        modified_jumps = []  # "long" jumps crossing over a deleted state
+        #zeroed_jumps = [] # these jumps originate from a deleted state
+        #modified_jumps = []  # "long" jumps crossing over a deleted state
         refnetwork = [] # reference w0 network corresponding to long/deleted jumps
         index = 0
         for jt, jumpindices in enumerate(self.jumpnetwork_index):
@@ -1123,8 +1125,10 @@ class StarSetMeta(StarSet):
                     dx = PSf.dx - PSi.dx
                     # is initial state deleted? then rate to be added will be zeroed out
                     if PSi in deleted_states:
-                        if any(any(i == i0 and f == f0 for (i0, f0), dx in jlist) for jlist in jumpnetwork): continue
-                        jump_zeroed = 1
+                        if any(any(i == i0 and f == f0 for (i0, f0), dx in jlist) for jlist in refnetwork): continue
+                        refnetwork.append(self.symmequivjumplist(i, f, dx))
+                        jumptype2.append(jt)
+                        #jump_zeroed = 1
                     # is final state deleted? then distance will be doubled (hard coded for now but need to change)
                     elif PSf in deleted_states:
                         for new_jump in [jumplist2[j] for j in jumpnetwork_index2[jt]]:
@@ -1136,7 +1140,6 @@ class StarSetMeta(StarSet):
                             PSflong = PSi + long_jump
                         except:
                             continue
-
                         if PSflong.iszero(): continue
                         flong = self.stateindex(PSflong)
                         if flong is None: continue  # outside our StarSet
@@ -1144,50 +1147,54 @@ class StarSetMeta(StarSet):
                         PSf = PSflong
                         f=flong
                         dx = PSf.dx - PSi.dx
-                        is_long = 1
+                        jumpnetwork.append(self.symmequivjumplist(i, f, dx))
+                        jumptype.append(jt)
+                        starpair.append((self.index[i], self.index[f]))
                     else:
                         if any(any(i == i0 and f == f0 for (i0, f0), dx in jlist) for jlist in jumpnetwork): continue
-                    jumpnetwork.append(self.symmequivjumplist(i, f, dx))
-                    jumptype.append(jt)
-                    starpair.append((self.index[i], self.index[f]))
-                    refnetwork.append([])
-                    if jump_zeroed or is_long:
-                        for jump_w1 in jumpnetwork[-1]:
-                            for jump_w0 in self.jumplist:
-                                if np.allclose(jump_w1[1], jump_w0.dx):
-                                    refnetwork[-1].append(jump_w0)
-                                    break
-                    zeroed_jumps.append(jump_zeroed)
-                    modified_jumps.append(is_long)
+                        jumpnetwork.append(self.symmequivjumplist(i, f, dx))
+                        refnetwork.append(self.symmequivjumplist(i, f, dx))
+                        jumptype.append(jt)
+                        jumptype2.append(jt)
+                        starpair.append((self.index[i], self.index[f]))
+        #             #refnetwork.append([])
+        #             if jump_zeroed or is_long:
+        #                 for jump_w1 in jumpnetwork[-1]:
+        #                     for jump_w0 in self.jumplist:
+        #                         if np.allclose(jump_w1[1], jump_w0.dx):
+        #                             refnetwork[-1].append(jump_w0)
+        #                             break
+        #             zeroed_jumps.append(jump_zeroed)
+        #             modified_jumps.append(is_long)
+        #
+        # replaced_network = []
+        # todel = []
+        # for i,j in enumerate(modified_jumps):
+        #     if(j):
+        #         temp_net = []
+        #         for (i0, f0), dx0 in jumpnetwork[i]:
+        #             pi0 = self.states[i0]
+        #
+        #             for k, l in enumerate(zeroed_jumps):
+        #                 if(l):
+        #                     for m, ((i1, f1), dx1) in enumerate(jumpnetwork[k]):
+        #                         pi1 = self.states[i1]
+        #                         if i0 == i1 and np.allclose(dx0/np.linalg.norm(dx0)-dx1/np.linalg.norm(dx1), np.zeros(3)):
+        #                             temp_net.append(jumpnetwork[k][m])
+        #                             jumpnetwork[k].remove(jumpnetwork[k][m])
+        #                             break
+        #         replaced_network.append(temp_net)
+        #     else:
+        #         replaced_network.append([])
+        #
+        # for i, j in enumerate(modified_jumps):
+        #     if(j):
+        #         continue
+        #     else:
+        #         for k in jumpnetwork[i]:
+        #             replaced_network[i].append(k)
 
-        replaced_network = []
-        todel = []
-        for i,j in enumerate(modified_jumps):
-            if(j):
-                temp_net = []
-                for (i0, f0), dx0 in jumpnetwork[i]:
-                    pi0 = self.states[i0]
-
-                    for k, l in enumerate(zeroed_jumps):
-                        if(l):
-                            for m, ((i1, f1), dx1) in enumerate(jumpnetwork[k]):
-                                pi1 = self.states[i1]
-                                if i0 == i1 and np.allclose(dx0/np.linalg.norm(dx0)-dx1/np.linalg.norm(dx1), np.zeros(3)):
-                                    temp_net.append(jumpnetwork[k][m])
-                                    jumpnetwork[k].remove(jumpnetwork[k][m])
-                                    break
-                replaced_network.append(temp_net)
-            else:
-                replaced_network.append([])
-
-        for i, j in enumerate(modified_jumps):
-            if(j):
-                continue
-            else:
-                for k in jumpnetwork[i]:
-                    replaced_network[i].append(k)
-
-        return jumpnetwork, jumptype, starpair, refnetwork, zeroed_jumps, modified_jumps, replaced_network
+        return jumpnetwork, jumptype, starpair, refnetwork, jumptype2
 
 
 class VectorStarSet(object):
@@ -1591,7 +1598,7 @@ class VectorStarSetMeta(VectorStarSet):
             if starset.Nshells > 0:
                 self.generate(starset)
 
-    def rateexpansions(self, jumpnetwork, jumptype, omega2=False, zero_jumps=(), rep_network=()):
+    def rateexpansions(self, jumpnetwork, jumptype1, omega2=False, refnetwork=(), jumptype2=()):
         """
         Construct the omega0 and omega1 matrix expansions in terms of the jumpnetwork;
         includes the escape terms separately. The escape terms are tricky because they have
@@ -1606,7 +1613,7 @@ class VectorStarSetMeta(VectorStarSet):
         :param jumpnetwork: jumpnetwork of symmetry unique omega1-type jumps,
             corresponding to our starset. List of lists of (IS, FS), dx tuples, where IS and FS
             are indices corresponding to states in our starset.
-        :param jumptype: specific omega0 jump type that the jump corresponds to
+        :param jumptype1: specific omega0 jump type that the jump corresponds to
         :param omega2: (optional) are we dealing with the omega2 list, so we need to remove
             origin states? (default=False)
         :param refnetwork: (optional) reference omega0 network when deleting/modifying states.
@@ -1628,7 +1635,7 @@ class VectorStarSetMeta(VectorStarSet):
         rate0escape = np.zeros((self.Nvstars, len(self.starset.jumpnetwork_index)))
         rate1escape = np.zeros((self.Nvstars, len(jumpnetwork)))
 
-        for k, jumplist, jt in zip(itertools.count(), rep_network, jumptype):
+        for k, jumplist, jt in zip(itertools.count(), refnetwork, jumptype2):
             for (IS, FS), dx in jumplist:
                 for i in range(self.Nvstars):
                     for Ri, vi in zip(self.vecpos[i], self.vecvec[i]):
@@ -1650,27 +1657,21 @@ class VectorStarSetMeta(VectorStarSet):
                                                 rate0expansion[j, i, jt] += np.dot(vi, vj)
                                                 rate0escape[j, jt] -= np.dot(vj, vj)
 
-        for k, jumplist, jt in zip(itertools.count(), jumpnetwork, jumptype):
+        for k, jumplist, jt in zip(itertools.count(), jumpnetwork, jumptype1):
 
             for (IS, FS), dx in jumplist:
                 for i in range(self.Nvstars):
                     for Ri, vi in zip(self.vecpos[i], self.vecvec[i]):
                         if Ri == IS:
-                            if zero_jumps[k]:
-                                rate1escape[i, k] -= 0.0
-                            else:
-                                rate1escape[i, k] -= np.dot(vi, vi)
+                            rate1escape[i, k] -= np.dot(vi, vi)
                             # for j in range(i+1):
                             for j in range(self.Nvstars):
                                 for Rj, vj in zip(self.vecpos[j], self.vecvec[j]):
                                     if Rj == FS:
-                                        if zero_jumps[k]:
-                                            rate1expansion[i, j, k] += 0.0 # np.dot(vi, vj) # 0.0
-                                        else:
-                                            rate1expansion[i, j, k] += np.dot(vi, vj)
+                                       rate1expansion[i, j, k] += np.dot(vi, vj)
 
 
-        # for k, jumplist, jt in zip(itertools.count(), jumpnetwork, jumptype):
+        # for k, jumplist, jt in zip(itertools.count(), jumpnetwork, jumptype1):
         #
         #     for (IS, FS), dx in jumplist:
         #         for i in range(self.Nvstars):
@@ -1706,7 +1707,7 @@ class VectorStarSetMeta(VectorStarSet):
                zeroclean(rate1expansion), zeroclean(rate1escape)
 
 
-    def biasexpansions(self, jumpnetwork, jumptype, omega2=False, rep_network=()):
+    def biasexpansions(self, jumpnetwork, jumptype1, omega2=False, refnetwork=(), jumptype2=()):
         """
         Construct the bias1 and bias0 vector expansion in terms of the jumpnetwork.
         We return the bias0 contribution so that the db = bias1 - bias0 can be determined.
@@ -1724,7 +1725,7 @@ class VectorStarSetMeta(VectorStarSet):
         :param jumpnetwork: jumpnetwork of symmetry unique omega1-type jumps,
           corresponding to our starset. List of lists of (IS, FS), dx tuples, where IS and FS
           are indices corresponding to states in our starset.
-        :param jumptype: specific omega0 jump type that the jump corresponds to
+        :param jumptype1: specific omega0 jump type that the jump corresponds to
         :param refnetwork: (optional) reference omega0 network for modified states.
         :param modified_jumps: (optional) list of 0/1 indicating modified states
 
@@ -1737,7 +1738,7 @@ class VectorStarSetMeta(VectorStarSet):
         bias0expansion = np.zeros((self.Nvstars, len(self.starset.jumpnetwork_index)))
         bias1expansion = np.zeros((self.Nvstars, len(jumpnetwork)))
 
-        for k, jumplist, jt in zip(itertools.count(), jumpnetwork, jumptype):
+        for k, jumplist, jt in zip(itertools.count(), jumpnetwork, jumptype1):
             for l, ((IS, FS), dx) in enumerate(jumplist):
                 # run through the star-vectors; just use first as representative
                 for i, svR, svv in zip(itertools.count(), self.vecpos, self.vecvec):
@@ -1754,7 +1755,7 @@ class VectorStarSetMeta(VectorStarSet):
                                     geom_bias = -np.dot(vj, dx)
                                     bias1expansion[j, k] += geom_bias  # do we need this??
 
-        for k, jumplist, jt in zip(itertools.count(), rep_network, jumptype):
+        for k, jumplist, jt in zip(itertools.count(), refnetwork, jumptype1):
             for l, ((IS, FS), dx) in enumerate(jumplist):
                 # run through the star-vectors; just use first as representative
                 for i, svR, svv in zip(itertools.count(), self.vecpos, self.vecvec):
@@ -1772,7 +1773,7 @@ class VectorStarSetMeta(VectorStarSet):
                                     bias0expansion[j, jt] += geom_bias
 
 
-        # for k, jumplist, jt in zip(itertools.count(), jumpnetwork, jumptype):
+        # for k, jumplist, jt in zip(itertools.count(), jumpnetwork, jumptype1):
         #     for l, ((IS, FS), dx) in enumerate(jumplist):
         #         # run through the star-vectors; just use first as representative
         #         for i, svR, svv in zip(itertools.count(), self.vecpos, self.vecvec):
@@ -1805,7 +1806,7 @@ class VectorStarSetMeta(VectorStarSet):
         return zeroclean(bias0expansion), zeroclean(bias1expansion)
 
 
-    def bareexpansions(self, jumpnetwork, jumptype, refnetwork=(), modified_jumps=(), rep_network=()):
+    def bareexpansions(self, jumpnetwork, jumptype1, refnetwork=(), jumptype2=()):
         """
         Construct the bare diffusivity expansion in terms of the jumpnetwork.
         We return the reference (0) contribution so that the change can be determined; this
@@ -1822,7 +1823,7 @@ class VectorStarSetMeta(VectorStarSet):
         :param jumpnetwork: jumpnetwork of symmetry unique omega1-type jumps,
             corresponding to our starset. List of lists of (IS, FS), dx tuples, where IS and FS
             are indices corresponding to states in our starset.
-        :param jumptype: specific omega0 jump type that the jump corresponds to
+        :param jumptype1: specific omega0 jump type that the jump corresponds to
         :return D0expansion: array[3,3, Njump_omega0]
             the D0[a,b,jt] = sum(D0expansion[a,b, jt] * sqrt(probfactor0[PS[jt][0]]*probfactor0[PS[jt][1]) * omega0[jt])
         :return D1expansion: array[3,3, Njump_omega1]
@@ -1832,14 +1833,14 @@ class VectorStarSetMeta(VectorStarSet):
         D0expansion = np.zeros((3, 3, len(self.starset.jumpnetwork_index)))
         D1expansion = np.zeros((3, 3, len(jumpnetwork)))
 
-        for k, jt, jumplist in zip(itertools.count(), jumptype, jumpnetwork):
+        for k, jt, jumplist in zip(itertools.count(), jumptype1, jumpnetwork):
             d = np.sum(0.5 * np.outer(dx, dx) for ISFS, dx in jumplist)  # we don't need initial/final state
             D1expansion[:, :, k] += d
-        for k, jt, jumplist in zip(itertools.count(), jumptype, rep_network):
+        for k, jt, jumplist in zip(itertools.count(), jumptype2, refnetwork):
             d = np.sum(0.5 * np.outer(dx, dx) for ISFS, dx in jumplist)  # we don't need initial/final state
             D0expansion[:, :, jt] += d
 
-        # for k, jt, jumplist in zip(itertools.count(), jumptype, jumpnetwork):
+        # for k, jt, jumplist in zip(itertools.count(), jumptype1, jumpnetwork):
         #     d1 = np.sum(0.5 * np.outer(dx, dx) for ISFS, dx in jumplist)  # we don't need initial/final state
         #     #print("d1= ",d1)
         #     if modified_jumps[k]:
