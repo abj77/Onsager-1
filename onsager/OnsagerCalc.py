@@ -1546,8 +1546,8 @@ class VacancyMediatedMeta(VacancyMediated):
             self.om0_jn = copy.deepcopy(jumpnetwork)
             self.GFcalc = self.GFcalculator(NGFmax)
             # do some initial setup:
-            self.thermo = stars.StarSetMeta(self.jumpnetwork, self.crys, self.chem, Nthermo, meta_sites=meta_sites)
-            self.kinetic = stars.StarSetMeta(self.jumpnetwork, self.crys, self.chem, Nthermo, meta_sites=meta_sites)
+            self.thermo = stars.StarSetMeta(self.jumpnetwork, self.crys, self.chem, 0, meta_sites=meta_sites)
+            self.kinetic = stars.StarSetMeta(self.jumpnetwork, self.crys, self.chem, 0, meta_sites=meta_sites)
             self.NNstar = stars.StarSetMeta(self.jumpnetwork, self.crys, self.chem, 1, meta_sites=meta_sites)
             self.vkinetic = stars.VectorStarSetMeta()
             # separating out the thermo and kinetic part from here on
