@@ -516,7 +516,7 @@ class VectorStarBias2linearTests(unittest.TestCase):
         # make omega2 twice omega0:
         alpha = 2.
         om2expand = np.array([0.5,0.5]) #alpha * self.rates
-        om0expand = np.array([0.5,1.0]) #self.rates.copy()
+        om0expand = np.array([1.0,1.0]) #self.rates.copy()
         self.assertEqual(np.shape(bias2expand),
                          (self.vecstarset.Nvstars, len(self.jumpnetwork)))
         biasvec1 = np.zeros((self.starset.Nstates, 3))  # bias vector: only the exchange hops
