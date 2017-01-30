@@ -821,7 +821,7 @@ class StarSetMeta(StarSet):
             newStarSet.Nstates = self.Nstates
             newStarSet.index = self.index.copy()
             newStarSet.indexdict = self.indexdict.copy()
-            newStarSet.meta_sites = self.meta_sites.copy()
+            newStarSet.meta_sites = (i for i in self.meta_sites.copy())
             # newStarSet.jumplist2 = self.jumplist2.copy()
             # newStarSet.jumpnetwork_index2 =copy.deepcopy(self.jumpnetwork_index2)
         else: newStarSet.generate(0)
@@ -959,8 +959,8 @@ class StarSetMeta(StarSet):
           list of list of tuples (i,f), dx where i,f index into states for the initial and final states,
           and dx = displacement of vacancy in Cartesian coordinates. Note: if (i,f), dx is present,
           so is (f,i), -dx
-        :return zeroed_jumps: list of 0/1 values to indicate if the jump is zeroed out or not.
-        :return modified_jumps: list of 0/1 values to indicate if the jump is modified out or not.
+        :return jumptype2: list of indices corresponding to the (original) jump type for each
+          symmetry unique jump; useful for constructing a LIMB approximation
         """
 
         if self.Nshells < 1: return []
@@ -1076,6 +1076,8 @@ class StarSetMeta(StarSet):
         Generate a jumpnetwork corresponding to vacancy jumping while the solute remains fixed.
 
         :param deleted_states: list of tuples of 'deleted' pair states to which vacancy cannot jump.
+        :param jumpnetwork2: alternate 'long' jumps across the deleted states
+
         :return jumpnetwork: list of symmetry unique jumps; list of list of tuples (i,f), dx where
             i,f index into states for the initial and final states, and dx = displacement of vacancy
             in Cartesian coordinates. Note: if (i,f), dx is present, so if (f,i), -dx
@@ -1087,8 +1089,7 @@ class StarSetMeta(StarSet):
         :return refnetwork: list of w0 jumps corresponding to the w1 network; list of list of tuples (i,f), dx where
             i,f index into states for the initial and final states, and dx = displacement of vacancy
             in Cartesian coordinates.
-        :return zeroed_jumps: list of 0/1 indicating if the jump is zeroed or not.
-        :return modified_jumps: list of 0/1 indicating if the jump is modified or not.
+        :return jumptype2: list of indices corresponding to the jump type for the reference network
         """
         if self.Nshells < 1: return []
         jumpnetwork = []
@@ -1617,7 +1618,7 @@ class VectorStarSetMeta(VectorStarSet):
         :param omega2: (optional) are we dealing with the omega2 list, so we need to remove
             origin states? (default=False)
         :param refnetwork: (optional) reference omega0 network when deleting/modifying states.
-        :param zero_jumps: (optional) list of 0/1 indicating zeroed jumps
+        :param jumptype2: (optional) specific omega0 jump type that the reference network corresponds to
         :return rate0expansion: array[Nsv, Nsv, Njump_omega0]
             the omega0 matrix[i, j] = sum(rate0expansion[i, j, k] * omega0[k]); *IF* NVB>0
             we "hijack" this and use it for [NVB, Nsv, Njump_omega0], as we're doing an omega2
@@ -1727,7 +1728,7 @@ class VectorStarSetMeta(VectorStarSet):
           are indices corresponding to states in our starset.
         :param jumptype1: specific omega0 jump type that the jump corresponds to
         :param refnetwork: (optional) reference omega0 network for modified states.
-        :param modified_jumps: (optional) list of 0/1 indicating modified states
+        :param jumptype2: (optional) specific omega0 jump types that the reference network corresponds to
 
         :return bias0expansion: array[Nsv, Njump_omega0]
             the gen0 vector[i] = sum(bias0expasion[i, k] * sqrt(probfactor0[PS[k]]) * omega0[k])
@@ -1824,6 +1825,9 @@ class VectorStarSetMeta(VectorStarSet):
             corresponding to our starset. List of lists of (IS, FS), dx tuples, where IS and FS
             are indices corresponding to states in our starset.
         :param jumptype1: specific omega0 jump type that the jump corresponds to
+        :param refnetwork: (optional) specific omega0 jumps to which the jumpnetwork corresponds to. Needed when
+                           deleting states.
+        :param jumptype2: (optional)specific omega0 jump types that the reference network corresponds to
         :return D0expansion: array[3,3, Njump_omega0]
             the D0[a,b,jt] = sum(D0expansion[a,b, jt] * sqrt(probfactor0[PS[jt][0]]*probfactor0[PS[jt][1]) * omega0[jt])
         :return D1expansion: array[3,3, Njump_omega1]

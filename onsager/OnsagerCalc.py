@@ -1528,7 +1528,16 @@ class VacancyMediatedMeta(VacancyMediated):
     def __init__(self, crys, chem, sitelist, jumpnetwork, Nthermo=0, NGFmax=4, meta_sites=(), jumpnetwork2=(),
                  deleted_states=()):
         """
-        will fill it later
+        Create our diffusion calculator designed to deal with additional or missing states.
+
+        :param crys: Crystal object
+        :param chem: index identifying the diffusing species
+        :param sitelist: list, grouped into Wyckoff common positions, of unique sites
+        :param jumpnetwork: list of unique transitions as lists of ((i,j), dx)
+        :param Nthermo: range of thermodynamic interaction (in successive jumpnetworks)
+        :param NGFmax: parameter controlling k-point density of GF calculator; 4 seems reasonably accurate
+        :param meta_sites: tuple of integer indices corresponding to the metastable sites
+        :param jumpnetwork2: list of alternative unique transitions as lists of ((i,j), dx)
         """
         if not meta_sites.all():
             VacancyMediated.__init__(self,crys, chem, sitelist, jumpnetwork, Nthermo,NGFmax)
