@@ -528,11 +528,11 @@ class VectorStarBias2linearTests(unittest.TestCase):
                     if IS == i:
                         biasvec1[i, :] += dx * rate
 
-        for jumplist, rate in zip(refnetwork_omega2, om0expand):
+        for jumplist, j in zip(refnetwork_omega2, refjt):
             for (IS, FS), dx in jumplist:
                 for i in range(self.starset.Nstates):
                     if IS == i:
-                        biasvec2[i, :] += dx * rate
+                        biasvec2[i, :] += dx * om0expand[j]
 
         biasvec = biasvec1 - biasvec2
         # construct the same bias vector using our expansion
@@ -596,6 +596,67 @@ class VectorStarBias1linearTests(unittest.TestCase):
                 for i in range(self.starset.Nstates):
                     if IS == i:
                         biasvec[i, :] += dx * (rate - om0)
+        # construct the same bias vector using our expansion
+        biasveccomp = np.zeros((self.starset.Nstates, 3))
+        for b1, b0, svpos, svvec in zip(np.dot(bias1expand, om1expand),
+                                        np.dot(bias0expand, om0expand),
+                                        self.vecstarset.vecpos,
+                                        self.vecstarset.vecvec):
+            # test the construction
+            for Ri, vi in zip(svpos, svvec):
+                biasveccomp[Ri, :] += (b1 - b0) * vi
+        for i in range(self.starset.Nstates):
+            self.assertTrue(np.allclose(biasvec[i], biasveccomp[i]),
+                            msg='Failure for state {}: {}\n{} != {}'.format(
+                                i, self.starset.states[i], biasvec[i], biasveccomp[i]))
+
+    def testConstructDelBias1(self):
+        """Do we construct our omega1 bias correctly for deleted states?"""
+
+        self.starset.generate(2)  # we need at least 2nd nn to even have jump networks to worry about...
+        states_del = [[0.33333333, 1.16666667, -0.5],
+                      [-0.16666667, 0.66666667, -0.5],
+                      [0.33333333, 0.16666667, -0.5],
+                      [0.5, 0.5, 0.]]
+        #build a list of pair states to be deleted
+        ps_del = []
+        star_del = []
+        for meta in states_del:
+            for state in self.starset.states:
+                if state.i == 0 and state.j in self.meta_sites:
+                    if np.allclose(np.dot(self.crys.invlatt, state.dx), meta):
+                        star_index = self.starset.starindex(state)
+                        star_del.append(star_index)
+                        for i in self.starset.stars[star_index]:
+                            ps_del.append(self.starset.states[i])
+                        break
+
+        self.vecstarset = stars.VectorStarSetMeta(self.starset)
+        jumpnetwork_omega1, jt, sp, refnetwork_omega1, refjt = \
+            self.starset.jumpnetwork_omega1(deleted_states=ps_del, jumpnetwork2=self.jumpnetwork2)
+        bias0expand, bias1expand = \
+            self.vecstarset.biasexpansions(jumpnetwork_omega1, jt, refnetwork=refnetwork_omega1,jumptype2=refjt)
+        om1expand = np.random.uniform(0, 1, len(jumpnetwork_omega1))
+        om0expand = [1.0, 1.0]
+        self.assertEqual(np.shape(bias1expand),
+                         (self.vecstarset.Nvstars, len(jumpnetwork_omega1)))
+        biasvec1 = np.zeros((self.starset.Nstates, 3))  # bias vector: only the exchange hops
+        biasvec2 = np.zeros((self.starset.Nstates, 3))  # bias vector: only the exchange hops
+
+        for jumplist, rate in zip(jumpnetwork_omega1, om1expand):
+            for (IS, FS), dx in jumplist:
+                for i in range(self.starset.Nstates):
+                    if IS == i:
+                        biasvec1[i, :] += dx * rate
+
+        for jumplist, j in zip(refnetwork_omega1, refjt):
+            for (IS, FS), dx in jumplist:
+                for i in range(self.starset.Nstates):
+                    if IS == i:
+                        biasvec2[i, :] += dx * om0expand[j]
+
+        biasvec = biasvec1 - biasvec2
+
         # construct the same bias vector using our expansion
         biasveccomp = np.zeros((self.starset.Nstates, 3))
         for b1, b0, svpos, svvec in zip(np.dot(bias1expand, om1expand),

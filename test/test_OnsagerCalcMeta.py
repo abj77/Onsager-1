@@ -125,7 +125,7 @@ class CrystalOnsagerTestsHCP(DiffusionTestCase):
         Diffusivity = OnsagerCalc.VacancyMediatedMeta(self.crys, self.chem, self.sitelist, self.jumpnetwork, 2,
                                                       meta_sites = self.meta_sites, jumpnetwork2= self.jumpnetwork2)
 
-        HCPtracer = {'preV': np.array([1.0, 1.0 / 10000000.0]), 'eneV': np.array([0.0, 0.0]),
+        HCPtracer = {'preV': np.array([1.0, 1.0]), 'eneV': np.array([0.0, 0.0]),
                      'preT0': np.array([0.5, 1.0]),
                      'eneT0': np.array([0, 0]),
                      }

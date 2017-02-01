@@ -1756,7 +1756,7 @@ class VectorStarSetMeta(VectorStarSet):
                                     geom_bias = -np.dot(vj, dx)
                                     bias1expansion[j, k] += geom_bias  # do we need this??
 
-        for k, jumplist, jt in zip(itertools.count(), refnetwork, jumptype1):
+        for k, jumplist, jt in zip(itertools.count(), refnetwork, jumptype2):
             for l, ((IS, FS), dx) in enumerate(jumplist):
                 # run through the star-vectors; just use first as representative
                 for i, svR, svv in zip(itertools.count(), self.vecpos, self.vecvec):
