@@ -133,13 +133,15 @@ class CrystalOnsagerTestsHCP(DiffusionTestCase):
         HCPtracer['preT2'] = np.array([0.5, 0.5])
         # thermaldef = self.makeunitythermodict(Diffusivity)
         L0vv = np.zeros((3, 3))
-        # om0 = thermaldef['preT0'][0] / thermaldef['preV'][0] * \
-        #       np.exp((thermaldef['eneV'][0] - thermaldef['eneT0'][0]) / kT)
-        # for jumplist in self.jumpnetwork:
-        #    for (i, j), dx in jumplist:
-        #        L0vv += 0.5 * np.outer(dx, dx) * om0
-        # L0vv /= self.crys.N
+        om0 = [HCPtracer['preT0'][i] / HCPtracer['preV'][i] * \
+               np.exp((HCPtracer['eneV'][i] - HCPtracer['eneT0'][i]) / kT) for i in range(2)]
 
+        for ind, jumplist in enumerate(self.jumpnetwork):
+            for (i, j), dx in jumplist:
+                L0vv += 0.5 * np.outer(dx, dx) * om0[ind]
+
+        L0vv /= self.crys.N
+        print(L0vv)
         Lvv, Lss, Lsv, L1vv = Diffusivity.Lij(*Diffusivity.preene2betafree(kT, **HCPtracer))
 
         if self.logger.isEnabledFor(logging.DEBUG):
@@ -152,8 +154,8 @@ class CrystalOnsagerTestsHCP(DiffusionTestCase):
                             msg='Diffusivity not isotropic?')
         # No solute drag, so Lsv = -Lvv; Lvv = normal vacancy diffusion
         # all correlation is in that geometric prefactor of Lss.
-        #self.assertTrue(np.allclose(Lvv, L0vv))
-        #self.assertTrue(np.allclose(-Lsv, L0vv))
+        self.assertTrue(np.allclose(Lvv, L0vv))
+        self.assertTrue(np.allclose(-Lsv, L0vv))
         self.assertTrue(np.allclose(L1vv, 0.))
         correlmat = np.array([[self.correlx, 0, 0], [0, self.correlx, 0], [0, 0, self.correlz]])
         self.assertTrue(np.allclose(-Lss, np.dot(correlmat, Lsv), rtol=1e-6),
