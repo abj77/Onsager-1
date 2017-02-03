@@ -1501,8 +1501,6 @@ class VacancyMediated(object):
         L1ss = np.dot(outer_etaSvec, biasSvec) / self.N
         L1sv = np.dot(outer_etaSvec, biasVvec) / self.N
         L1vv = np.dot(outer_etaVvec, biasVvec) / self.N
-        for i in biasVvec:
-            print(i)
         # 6c. origin state corrections for vacancy:
         if len(self.OSindices) > 0:
             etaV0 = -np.tensordot(self.OS_VB, etav, axes=((1, 2), (0, 1))) * np.sqrt(self.N)
